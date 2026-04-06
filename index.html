@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Rekap Nama & Nominal</title>
+    <title>Aplikasi Rekap Nama</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -20,28 +19,13 @@
 <body class="p-4 pb-20 text-slate-800">
 
     <div class="bg-slate-900 text-white p-5 rounded-xl shadow-lg mb-6 text-center border-b-4 border-emerald-500 relative">
-        <h1 class="text-xl font-black tracking-wider uppercase text-emerald-400">REKAP NAMA & NOMINAL</h1>
-        <p class="text-xs text-slate-400 mt-1">SCAN FOTO & INPUT MANUAL</p>
-    </div>
-
-    <div class="flex gap-2 mb-4">
-        <button onclick="switchTab('scan')" id="tab-scan" class="flex-1 py-2 font-bold rounded-lg bg-slate-200 text-slate-600 transition">📸 SCAN FOTO</button>
-        <button onclick="switchTab('manual')" id="tab-manual" class="flex-1 py-2 font-bold rounded-lg bg-emerald-600 text-white transition">✍️ KETIK MANUAL</button>
-    </div>
-
-    <div id="area-scan" class="bg-white p-5 rounded-xl shadow-md mb-6 cyber-border hidden">
-        <h3 class="font-bold text-slate-700 mb-3 text-sm">EKSTRAK NAMA DARI FOTO (Struk/Kertas)</h3>
-        <input type="file" id="image-upload" accept="image/*" class="w-full mb-3 p-2 border border-slate-300 rounded-lg text-sm">
-        <button onclick="scanImage()" class="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition flex justify-center items-center">
-            <span id="scan-text">🔍 MULAI SCAN FOTO</span>
-        </button>
-        <div id="scan-status" class="mt-3 text-xs text-emerald-600 font-bold text-center hidden">Memproses gambar... Harap tunggu.</div>
+        <h1 class="text-xl font-black tracking-wider uppercase text-emerald-400">REKAP NAMA</h1>
+        <p class="text-xs text-slate-400 mt-1">INPUT MANUAL & PASTE BANYAK</p>
     </div>
 
     <div id="area-manual" class="bg-white p-5 rounded-xl shadow-md mb-6 cyber-border">
-        <h3 class="font-bold text-slate-700 mb-3 text-sm">TAMBAH DATA SATUAN</h3>
+        <h3 class="font-bold text-slate-700 mb-3 text-sm">TAMBAH NAMA SATUAN</h3>
         <input type="text" id="input-nama" placeholder="Masukkan Nama Lengkap" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
-        <input type="number" id="input-nominal" placeholder="Nominal (Contoh: 50000)" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
         <button onclick="tambahManual()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 transition">
             ➕ TAMBAHKAN SATUAN
         </button>
@@ -73,15 +57,10 @@
             <button onclick="resetData()" class="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold">RESET</button>
         </div>
         
-        <p class="text-xs text-slate-400 mb-3 italic">*Klik nama atau nominal untuk langsung mengedit</p>
+        <p class="text-xs text-slate-400 mb-3 italic">*Klik nama untuk langsung mengedit</p>
         
         <div id="data-list" class="space-y-3 mb-6">
             </div>
-
-        <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
-            <p class="text-sm text-slate-500 font-bold">TOTAL KESELURUHAN</p>
-            <h2 id="total-uang" class="text-3xl font-black text-emerald-600">Rp 0</h2>
-        </div>
     </div>
 
     <script>
@@ -89,10 +68,8 @@
 
         // LOAD DATA AWAL
         window.onload = function() {
-            // Load Nama Pengirim dari LocalStorage
             document.getElementById('input-pengirim').value = localStorage.getItem('cyber_scan_pengirim') || "";
 
-            // Cek Link Share
             const urlParams = new URLSearchParams(window.location.search);
             const sharedData = urlParams.get('data');
             
@@ -112,77 +89,19 @@
             render();
         };
 
-        // SIMPAN PENGIRIM
         function simpanPengirim(val) {
             localStorage.setItem('cyber_scan_pengirim', val);
         }
 
-        // FUNGSI GANTI TAB
-        function switchTab(tab) {
-            if(tab === 'scan') {
-                document.getElementById('area-scan').classList.remove('hidden');
-                document.getElementById('area-manual').classList.add('hidden');
-                document.getElementById('tab-scan').className = "flex-1 py-2 font-bold rounded-lg bg-emerald-600 text-white transition";
-                document.getElementById('tab-manual').className = "flex-1 py-2 font-bold rounded-lg bg-slate-200 text-slate-600 transition";
-            } else {
-                document.getElementById('area-scan').classList.add('hidden');
-                document.getElementById('area-manual').classList.remove('hidden');
-                document.getElementById('tab-manual').className = "flex-1 py-2 font-bold rounded-lg bg-emerald-600 text-white transition";
-                document.getElementById('tab-scan').className = "flex-1 py-2 font-bold rounded-lg bg-slate-200 text-slate-600 transition";
-            }
-        }
-
-        // FUNGSI SCAN GAMBAR (OCR)
-        async function scanImage() {
-            const fileInput = document.getElementById('image-upload');
-            const file = fileInput.files[0];
-            const statusBox = document.getElementById('scan-status');
-            const btnText = document.getElementById('scan-text');
-
-            if (!file) return alert("Pilih foto dulu Bos!");
-
-            statusBox.classList.remove('hidden');
-            btnText.innerText = "⏳ SEDANG MEMBACA GAMBAR...";
-
-            try {
-                const { data: { text } } = await Tesseract.recognize(file, 'ind', { logger: m => console.log(m) });
-                let lines = text.split('\n');
-                let count = 0;
-
-                lines.forEach(line => {
-                    let cleanLine = line.trim();
-                    if(cleanLine.length > 2) {
-                        db_rekap.push({ id: Date.now() + Math.random(), nama: cleanLine, nominal: 0 });
-                        count++;
-                    }
-                });
-
-                saveData();
-                alert(`Sukses! ${count} baris data berhasil dipindai.`);
-            } catch (error) {
-                alert("Gagal membaca gambar. Pastikan tulisan jelas.");
-            }
-
-            statusBox.classList.add('hidden');
-            btnText.innerText = "🔍 MULAI SCAN FOTO";
-            fileInput.value = "";
-        }
-
-        // FUNGSI TAMBAH MANUAL SATUAN
         function tambahManual() {
             let nama = document.getElementById('input-nama').value;
-            let nominal = parseInt(document.getElementById('input-nominal').value) || 0;
-
             if(!nama) return alert("Nama tidak boleh kosong!");
 
-            db_rekap.push({ id: Date.now(), nama: nama, nominal: nominal });
+            db_rekap.push({ id: Date.now(), nama: nama });
             saveData();
-
             document.getElementById('input-nama').value = "";
-            document.getElementById('input-nominal').value = "";
         }
 
-        // FUNGSI PROSES BANYAK NAMA DARI WA (BARU)
         function prosesBanyakNama() {
             let teksArea = document.getElementById('input-banyak-nama').value;
             if(!teksArea.trim()) return alert("Kotak teks masih kosong, paste dulu namanya!");
@@ -193,7 +112,7 @@
             barisanNama.forEach(nama => {
                 let namaBersih = nama.trim();
                 if(namaBersih !== "") {
-                    db_rekap.push({ id: Date.now() + Math.random(), nama: namaBersih, nominal: 0 });
+                    db_rekap.push({ id: Date.now() + Math.random(), nama: namaBersih });
                     jumlahDitambahkan++;
                 }
             });
@@ -203,24 +122,14 @@
             alert(`Mantap! ${jumlahDitambahkan} nama berhasil ditambahkan.`);
         }
 
-        // UPDATE NOMINAL & NAMA (EDIT DATA)
-        function updateNominal(id, value) {
-            let index = db_rekap.findIndex(x => x.id == id);
-            if(index > -1) {
-                db_rekap[index].nominal = parseInt(value) || 0;
-                saveDataAja();
-            }
-        }
-
         function updateNama(id, value) {
             let index = db_rekap.findIndex(x => x.id == id);
             if(index > -1) {
                 db_rekap[index].nama = value;
-                saveDataAja();
+                localStorage.setItem('cyber_scan_data', JSON.stringify(db_rekap));
             }
         }
 
-        // HAPUS DATA
         function hapusData(id) {
             db_rekap = db_rekap.filter(x => x.id != id);
             saveData();
@@ -233,23 +142,11 @@
             }
         }
 
-        // FUNGSI SIMPAN DATA KE LOCALSTORAGE
         function saveData() {
             localStorage.setItem('cyber_scan_data', JSON.stringify(db_rekap));
             render();
         }
 
-        function saveDataAja() {
-            localStorage.setItem('cyber_scan_data', JSON.stringify(db_rekap));
-            hitungTotal();
-        }
-
-        function hitungTotal() {
-            let total = db_rekap.reduce((sum, item) => sum + item.nominal, 0);
-            document.getElementById('total-uang').innerText = "Rp " + total.toLocaleString('id-ID');
-        }
-
-        // === FITUR EXPORT PDF ===
         function exportPDF() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
             
@@ -260,31 +157,26 @@
             const doc = new jsPDF();
             
             doc.setFontSize(16);
-            doc.text("LAPORAN REKAP DATA & NOMINAL", 14, 20);
+            doc.text("LAPORAN REKAP NAMA", 14, 20);
             doc.setFontSize(11);
-            doc.text("Pengirim / Acara : " + pengirim, 14, 28);
-            doc.text("Tanggal Cetak    : " + tgl, 14, 34);
+            doc.text("Acara : " + pengirim, 14, 28);
+            doc.text("Tanggal Cetak : " + tgl, 14, 34);
             
-            let totalAll = 0;
             const tableData = db_rekap.map((item, index) => {
-                totalAll += item.nominal;
-                return [index + 1, item.nama, "Rp " + item.nominal.toLocaleString('id-ID')];
+                return [index + 1, item.nama];
             });
 
-            tableData.push(["", "TOTAL KESELURUHAN", "Rp " + totalAll.toLocaleString('id-ID')]);
-
             doc.autoTable({
-                head: [['No', 'Nama / Deskripsi', 'Nominal']],
+                head: [['No', 'Nama']],
                 body: tableData,
                 startY: 40,
                 theme: 'grid',
                 headStyles: { fillColor: [16, 185, 129] }
             });
 
-            doc.save(`Rekap_${new Date().toISOString().slice(0,10)}.pdf`);
+            doc.save(`Rekap_Nama_${new Date().toISOString().slice(0,10)}.pdf`);
         }
 
-        // === FITUR EXPORT EXCEL ===
         function exportExcel() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
             
@@ -292,30 +184,24 @@
             let tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
             let ws_data = [
-                ["LAPORAN REKAP DATA & NOMINAL"],
-                ["Pengirim / Acara", pengirim],
+                ["LAPORAN REKAP NAMA"],
+                ["Acara", pengirim],
                 ["Tanggal Cetak", tgl],
                 [], 
-                ["No", "Nama / Deskripsi", "Nominal"]
+                ["No", "Nama"]
             ];
             
-            let totalAll = 0;
-            
             db_rekap.forEach((item, index) => {
-                totalAll += item.nominal;
-                ws_data.push([index + 1, item.nama, item.nominal]);
+                ws_data.push([index + 1, item.nama]);
             });
-            
-            ws_data.push(["", "TOTAL KESELURUHAN", totalAll]);
 
             let ws = XLSX.utils.aoa_to_sheet(ws_data);
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Rekap Data");
             
-            XLSX.writeFile(wb, `Rekap_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, `Rekap_Nama_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        // === FITUR SHARE LINK SAKTI ===
         function generateShareLink() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
             
@@ -325,32 +211,25 @@
             const url = window.location.origin + window.location.pathname + "?data=" + encodedData;
             
             navigator.clipboard.writeText(url).then(() => {
-                alert("Link berhasil di-copy!\n\nSilakan paste (tempel) di WhatsApp atau sosmed buat nge-share rekap ini ke orang lain.");
+                alert("Link berhasil di-copy!\n\nSilakan paste di WhatsApp buat nge-share daftar ini.");
             }).catch(err => {
                 prompt("Copy link di bawah ini secara manual:", url);
             });
         }
 
-        // RENDER UI
         function render() {
             let listHTML = "";
             db_rekap.forEach(item => {
                 listHTML += `
                 <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
                     <div class="flex-1 pr-3">
-                        <input type="text" onchange="updateNama(${item.id}, this.value)" value="${item.nama}" class="font-bold text-slate-800 text-sm mb-1 w-full bg-transparent border-b border-dashed border-slate-300 outline-none focus:border-emerald-500 pb-1">
-                        
-                        <div class="flex items-center text-xs text-slate-500 mt-1">
-                            <span class="mr-2 font-bold">Rp</span>
-                            <input type="number" onchange="updateNominal(${item.id}, this.value)" value="${item.nominal}" class="w-full p-1 border-b border-emerald-300 bg-transparent outline-none focus:border-emerald-600 font-bold text-slate-800">
-                        </div>
+                        <input type="text" onchange="updateNama(${item.id}, this.value)" value="${item.nama}" class="font-bold text-slate-800 text-sm w-full bg-transparent border-b border-dashed border-slate-300 outline-none focus:border-emerald-500 pb-1">
                     </div>
                     <button onclick="hapusData(${item.id})" class="text-slate-400 bg-slate-200 w-8 h-8 rounded-full flex justify-center items-center hover:bg-red-500 hover:text-white transition" title="Hapus Data">✖</button>
                 </div>
                 `;
             });
             document.getElementById('data-list').innerHTML = listHTML;
-            hitungTotal();
         }
     </script>
 </body>
