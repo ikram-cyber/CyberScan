@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Rekap Nama</title>
+    <title>Aplikasi Rekap Cerdas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -19,23 +19,25 @@
 <body class="p-4 pb-20 text-slate-800">
 
     <div class="bg-slate-900 text-white p-5 rounded-xl shadow-lg mb-6 text-center border-b-4 border-emerald-500 relative">
-        <h1 class="text-xl font-black tracking-wider uppercase text-emerald-400">REKAP NAMA</h1>
-        <p class="text-xs text-slate-400 mt-1">INPUT MANUAL & PASTE BANYAK</p>
+        <h1 class="text-xl font-black tracking-wider uppercase text-emerald-400">REKAP CERDAS</h1>
+        <p class="text-xs text-slate-400 mt-1">COPAS DARI WA LANGSUNG KEHITUNG</p>
     </div>
 
     <div id="area-manual" class="bg-white p-5 rounded-xl shadow-md mb-6 cyber-border">
-        <h3 class="font-bold text-slate-700 mb-3 text-sm">TAMBAH NAMA SATUAN</h3>
-        <input type="text" id="input-nama" placeholder="Masukkan Nama Lengkap" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
-        <button onclick="tambahManual()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 transition">
-            ➕ TAMBAHKAN SATUAN
+        <h3 class="font-bold text-slate-700 mb-3 text-sm">PASTE BANYAK NAMA (Dari WA/Catatan)</h3>
+        <p class="text-xs text-slate-400 mb-2">Aplikasi akan otomatis memisahkan nama dan angkanya!</p>
+        <textarea id="input-banyak-nama" rows="5" placeholder="Paste daftar di sini...&#10;Contoh:&#10;Lisa Nuraisah 50&#10;Dea Maharani 50&#10;Mang neng 100" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-blue-500 text-sm"></textarea>
+        <button onclick="prosesBanyakNama()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow">
+            📋 PROSES & HITUNG OTOMATIS
         </button>
 
         <hr class="my-5 border-slate-200">
 
-        <h3 class="font-bold text-slate-700 mb-3 text-sm">PASTE BANYAK NAMA (Dari WA/Catatan)</h3>
-        <textarea id="input-banyak-nama" rows="4" placeholder="Paste daftar nama di sini...&#10;Contoh:&#10;Budi&#10;Andi&#10;Siti" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-blue-500 text-sm"></textarea>
-        <button onclick="prosesBanyakNama()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-            📋 PROSES SEMUA NAMA SEKALIGUS
+        <h3 class="font-bold text-slate-700 mb-3 text-sm">TAMBAH DATA SATUAN</h3>
+        <input type="text" id="input-nama" placeholder="Masukkan Nama" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+        <input type="number" id="input-nominal" placeholder="Nominal (Contoh: 50)" class="w-full mb-3 p-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+        <button onclick="tambahManual()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 transition shadow">
+            ➕ TAMBAHKAN SATUAN
         </button>
     </div>
 
@@ -57,16 +59,20 @@
             <button onclick="resetData()" class="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold">RESET</button>
         </div>
         
-        <p class="text-xs text-slate-400 mb-3 italic">*Klik nama untuk langsung mengedit</p>
+        <p class="text-xs text-slate-400 mb-3 italic">*Klik nama atau nominal untuk mengedit</p>
         
         <div id="data-list" class="space-y-3 mb-6">
             </div>
+
+        <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
+            <p class="text-sm text-slate-500 font-bold">TOTAL KESELURUHAN</p>
+            <h2 id="total-uang" class="text-3xl font-black text-emerald-600">0</h2>
+        </div>
     </div>
 
     <script>
         let db_rekap = [];
 
-        // LOAD DATA AWAL
         window.onload = function() {
             document.getElementById('input-pengirim').value = localStorage.getItem('cyber_scan_pengirim') || "";
 
@@ -95,38 +101,60 @@
 
         function tambahManual() {
             let nama = document.getElementById('input-nama').value;
+            let nominal = parseInt(document.getElementById('input-nominal').value) || 0;
             if(!nama) return alert("Nama tidak boleh kosong!");
 
-            db_rekap.push({ id: Date.now(), nama: nama });
+            db_rekap.push({ id: Date.now(), nama: nama, nominal: nominal });
             saveData();
             document.getElementById('input-nama').value = "";
+            document.getElementById('input-nominal').value = "";
         }
 
+        // FITUR PINTAR: PISAHKAN NAMA DAN ANGKA OTOMATIS
         function prosesBanyakNama() {
             let teksArea = document.getElementById('input-banyak-nama').value;
-            if(!teksArea.trim()) return alert("Kotak teks masih kosong, paste dulu namanya!");
+            if(!teksArea.trim()) return alert("Kotak teks masih kosong, paste dulu daftarnya!");
 
             let barisanNama = teksArea.split('\n');
             let jumlahDitambahkan = 0;
 
-            barisanNama.forEach(nama => {
-                let namaBersih = nama.trim();
-                if(namaBersih !== "") {
-                    db_rekap.push({ id: Date.now() + Math.random(), nama: namaBersih });
+            barisanNama.forEach(baris => {
+                let teksBersih = baris.trim();
+                if(teksBersih !== "") {
+                    // Cari pola angka di akhir kalimat (misal: "Dea Maharani 50")
+                    let match = teksBersih.match(/(.+?)\s+([\d.,]+)$/);
+                    let namaAsli = teksBersih;
+                    let nominalAsli = 0;
+
+                    if(match) {
+                        namaAsli = match[1].trim(); // Ambil namanya aja
+                        let angkaStr = match[2].replace(/[.,]/g, ''); // Bersihin titik/koma dari angka
+                        nominalAsli = parseInt(angkaStr) || 0;
+                    }
+
+                    db_rekap.push({ id: Date.now() + Math.random(), nama: namaAsli, nominal: nominalAsli });
                     jumlahDitambahkan++;
                 }
             });
 
             saveData();
             document.getElementById('input-banyak-nama').value = "";
-            alert(`Mantap! ${jumlahDitambahkan} nama berhasil ditambahkan.`);
+            alert(`Mantap! ${jumlahDitambahkan} data berhasil dipisah dan ditambahkan.`);
         }
 
         function updateNama(id, value) {
             let index = db_rekap.findIndex(x => x.id == id);
             if(index > -1) {
                 db_rekap[index].nama = value;
-                localStorage.setItem('cyber_scan_data', JSON.stringify(db_rekap));
+                saveDataTanpaRender();
+            }
+        }
+
+        function updateNominal(id, value) {
+            let index = db_rekap.findIndex(x => x.id == id);
+            if(index > -1) {
+                db_rekap[index].nominal = parseInt(value) || 0;
+                saveDataTanpaRender();
             }
         }
 
@@ -147,9 +175,19 @@
             render();
         }
 
+        function saveDataTanpaRender() {
+            localStorage.setItem('cyber_scan_data', JSON.stringify(db_rekap));
+            hitungTotal();
+        }
+
+        function hitungTotal() {
+            let total = db_rekap.reduce((sum, item) => sum + (item.nominal || 0), 0);
+            // Format angka pakai titik (ribuan) biar gampang dibaca
+            document.getElementById('total-uang').innerText = total.toLocaleString('id-ID');
+        }
+
         function exportPDF() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
-            
             let pengirim = document.getElementById('input-pengirim').value || "Tanpa Keterangan";
             let tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -157,61 +195,64 @@
             const doc = new jsPDF();
             
             doc.setFontSize(16);
-            doc.text("LAPORAN REKAP NAMA", 14, 20);
+            doc.text("LAPORAN REKAP DATA & NOMINAL", 14, 20);
             doc.setFontSize(11);
             doc.text("Acara : " + pengirim, 14, 28);
-            doc.text("Tanggal Cetak : " + tgl, 14, 34);
+            doc.text("Tanggal : " + tgl, 14, 34);
             
+            let totalAll = 0;
             const tableData = db_rekap.map((item, index) => {
-                return [index + 1, item.nama];
+                totalAll += item.nominal;
+                return [index + 1, item.nama, item.nominal.toLocaleString('id-ID')];
             });
 
+            tableData.push(["", "TOTAL KESELURUHAN", totalAll.toLocaleString('id-ID')]);
+
             doc.autoTable({
-                head: [['No', 'Nama']],
+                head: [['No', 'Nama / Deskripsi', 'Nominal']],
                 body: tableData,
                 startY: 40,
                 theme: 'grid',
                 headStyles: { fillColor: [16, 185, 129] }
             });
 
-            doc.save(`Rekap_Nama_${new Date().toISOString().slice(0,10)}.pdf`);
+            doc.save(`Rekap_${new Date().toISOString().slice(0,10)}.pdf`);
         }
 
         function exportExcel() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
-            
             let pengirim = document.getElementById('input-pengirim').value || "Tanpa Keterangan";
             let tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
             let ws_data = [
-                ["LAPORAN REKAP NAMA"],
+                ["LAPORAN REKAP DATA & NOMINAL"],
                 ["Acara", pengirim],
-                ["Tanggal Cetak", tgl],
+                ["Tanggal", tgl],
                 [], 
-                ["No", "Nama"]
+                ["No", "Nama / Deskripsi", "Nominal"]
             ];
             
+            let totalAll = 0;
             db_rekap.forEach((item, index) => {
-                ws_data.push([index + 1, item.nama]);
+                totalAll += item.nominal;
+                ws_data.push([index + 1, item.nama, item.nominal]);
             });
+            ws_data.push(["", "TOTAL KESELURUHAN", totalAll]);
 
             let ws = XLSX.utils.aoa_to_sheet(ws_data);
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Rekap Data");
-            
-            XLSX.writeFile(wb, `Rekap_Nama_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, `Rekap_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function generateShareLink() {
             if(db_rekap.length === 0) return alert("Data masih kosong!");
-            
             const jsonStr = JSON.stringify(db_rekap);
             const encodedData = btoa(encodeURIComponent(jsonStr));
-            
             const url = window.location.origin + window.location.pathname + "?data=" + encodedData;
             
             navigator.clipboard.writeText(url).then(() => {
-                alert("Link berhasil di-copy!\n\nSilakan paste di WhatsApp buat nge-share daftar ini.");
+                alert("Link berhasil di-copy!\n\nSilakan paste di WhatsApp buat nge-share rekap ini.");
             }).catch(err => {
                 prompt("Copy link di bawah ini secara manual:", url);
             });
@@ -223,13 +264,19 @@
                 listHTML += `
                 <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
                     <div class="flex-1 pr-3">
-                        <input type="text" onchange="updateNama(${item.id}, this.value)" value="${item.nama}" class="font-bold text-slate-800 text-sm w-full bg-transparent border-b border-dashed border-slate-300 outline-none focus:border-emerald-500 pb-1">
+                        <input type="text" onchange="updateNama(${item.id}, this.value)" value="${item.nama}" class="font-bold text-slate-800 text-sm mb-1 w-full bg-transparent border-b border-dashed border-slate-300 outline-none focus:border-emerald-500 pb-1">
+                        
+                        <div class="flex items-center text-xs text-slate-500 mt-1">
+                            <span class="mr-2 font-bold text-emerald-600">Nominal:</span>
+                            <input type="number" onchange="updateNominal(${item.id}, this.value)" value="${item.nominal}" class="w-full p-1 border-b border-emerald-300 bg-transparent outline-none focus:border-emerald-600 font-bold text-slate-800">
+                        </div>
                     </div>
                     <button onclick="hapusData(${item.id})" class="text-slate-400 bg-slate-200 w-8 h-8 rounded-full flex justify-center items-center hover:bg-red-500 hover:text-white transition" title="Hapus Data">✖</button>
                 </div>
                 `;
             });
             document.getElementById('data-list').innerHTML = listHTML;
+            hitungTotal();
         }
     </script>
 </body>
